@@ -1,0 +1,274 @@
+{
+  "info": {
+    "name": "Event Management API",
+    "description": "REST API for events, tickets, bookings, and payments. Set `base_url` (e.g. http://localhost:8000/api/v1) and after Login set `token` for protected requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api/v1" },
+    { "key": "token", "value": "" },
+    { "key": "event_id", "value": "" },
+    { "key": "ticket_id", "value": "" },
+    { "key": "booking_id", "value": "" },
+    { "key": "payment_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"phone\": \"+1234567890\",\n  \"role\": \"customer\"\n}"
+            },
+            "url": "{{base_url}}/register",
+            "description": "Register as customer or organizer. Role: customer | organizer (admin not allowed)."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.token) { pm.collectionVariables.set('token', json.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json", "type": "text" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"your-seeded-user@example.com\",\n  \"password\": \"password\"\n}"
+            },
+            "url": "{{base_url}}/login",
+            "description": "Use seeded user email and password: 'password'. Token is auto-saved to collection variable."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "url": "{{base_url}}/logout",
+            "description": "Revoke current token. Requires auth."
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" } ],
+            "url": "{{base_url}}/me",
+            "description": "Current authenticated user. Requires auth."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Events (Public)",
+      "item": [
+        {
+          "name": "List Events",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/events?search=&location=&start_date=&end_date=&page=1",
+              "host": ["{{base_url}}"],
+              "path": ["events"],
+              "query": [
+                { "key": "search", "value": "" },
+                { "key": "location", "value": "" },
+                { "key": "start_date", "value": "" },
+                { "key": "end_date", "value": "" },
+                { "key": "page", "value": "1" }
+              ]
+            },
+            "description": "Paginated list. Optional: search, location, start_date, end_date."
+          }
+        },
+        {
+          "name": "Show Event",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/events/{{event_id}}",
+            "description": "Event details with tickets. Set event_id from list response."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Events (Organizer/Admin)",
+      "item": [
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Summer Concert 2025\",\n  \"description\": \"Annual outdoor concert.\",\n  \"date\": \"2025-07-15 18:00:00\",\n  \"location\": \"Central Park, New York\"\n}"
+            },
+            "url": "{{base_url}}/events",
+            "description": "Date must be in the future. Requires organizer or admin."
+          }
+        },
+        {
+          "name": "Update Event",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Event Title\",\n  \"location\": \"New Venue\"\n}"
+            },
+            "url": "{{base_url}}/events/{{event_id}}",
+            "description": "Owner or admin only. Send only fields to update."
+          }
+        },
+        {
+          "name": "Delete Event",
+          "request": {
+            "method": "DELETE",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" } ],
+            "url": "{{base_url}}/events/{{event_id}}",
+            "description": "Owner or admin only. Fails if event has confirmed bookings."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tickets",
+      "item": [
+        {
+          "name": "Create Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"VIP\",\n  \"price\": 99.99,\n  \"quantity\": 100\n}"
+            },
+            "url": "{{base_url}}/events/{{event_id}}/tickets",
+            "description": "Organizer/admin, and must own the event. Set event_id."
+          }
+        },
+        {
+          "name": "Update Ticket",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"Standard\",\n  \"price\": 49.99,\n  \"quantity\": 150\n}"
+            },
+            "url": "{{base_url}}/tickets/{{ticket_id}}",
+            "description": "Ticket owner (event owner) or admin. Quantity cannot be less than already booked."
+          }
+        },
+        {
+          "name": "Delete Ticket",
+          "request": {
+            "method": "DELETE",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" } ],
+            "url": "{{base_url}}/tickets/{{ticket_id}}",
+            "description": "Ticket owner or admin. Fails if ticket has confirmed bookings."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bookings (Customer)",
+      "item": [
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 2\n}"
+            },
+            "url": "{{base_url}}/tickets/{{ticket_id}}/bookings",
+            "description": "Customer only. One active booking per ticket per user. quantity 1–100."
+          }
+        },
+        {
+          "name": "List My Bookings",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" } ],
+            "url": "{{base_url}}/bookings",
+            "description": "Customer only. Returns own bookings."
+          }
+        },
+        {
+          "name": "Cancel Booking",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" } ],
+            "url": "{{base_url}}/bookings/{{booking_id}}/cancel",
+            "description": "Customer only. Can cancel own pending booking."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Process Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_method\": \"credit_card\"\n}"
+            },
+            "url": "{{base_url}}/bookings/{{booking_id}}/payment",
+            "description": "Customer only. Own pending booking. payment_method: credit_card | debit_card | paypal | stripe. Simulated gateway (success/fail)."
+          }
+        },
+        {
+          "name": "Get Payment",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" } ],
+            "url": "{{base_url}}/payments/{{payment_id}}",
+            "description": "Authenticated user. Can view only payment for own booking."
+          }
+        }
+      ]
+    }
+  ]
+}
